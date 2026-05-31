@@ -5,6 +5,9 @@ const { Server } = require("socket.io");
 const app = require("./app");
 const { sequelize } = require("./config/database");
 const { setIo } = require("./services/notificationService");
+const { Admin } = require("./models");
+const { hashPassword } = require("./services/authService");
+
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:5002",
   "http://127.0.0.1:5002",
@@ -45,12 +48,43 @@ const io = new Server(server, {
 // Pass io instance to notification service
 setIo(io);
 
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "azdigitalsacademy@gmail.com";
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || "Admin@12345";
+const SUPER_ADMIN_NAME = process.env.SUPER_ADMIN_NAME || "Super Admin";
+
+async function ensureSuperAdmin() {
+  try {
+    const existingAdmin = await Admin.findOne({ where: { email: SUPER_ADMIN_EMAIL } });
+    if (existingAdmin) {
+      console.log(`Super admin already exists: ${SUPER_ADMIN_EMAIL}`);
+      return;
+    }
+
+    const passwordHash = await hashPassword(SUPER_ADMIN_PASSWORD);
+
+    await Admin.create({
+      name: SUPER_ADMIN_NAME,
+      email: SUPER_ADMIN_EMAIL,
+      password: passwordHash,
+      role: "SUPER_ADMIN",
+      emailNotificationsEnabled: true
+    });
+
+    console.log(`Super admin account created: ${SUPER_ADMIN_EMAIL}`);
+  } catch (err) {
+    console.error("Failed to create super admin account:", err);
+  }
+}
+
 // Sync Database
-sequelize.sync({ alter: true }).then(() => {
-  console.log("Database synchronized");
-}).catch(err => {
-  console.error("Database synchronization failed:", err);
-});
+sequelize.sync({ alter: true })
+  .then(async () => {
+    console.log("Database synchronized");
+    await ensureSuperAdmin();
+  })
+  .catch((err) => {
+    console.error("Database synchronization failed:", err);
+  });
 
 io.on("connection", (socket) => {
   console.log("New client connected", socket.id);
