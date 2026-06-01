@@ -31,13 +31,13 @@ module.exports = {
         unique: true
       },
       status: {
-        type: Sequelize.ENUM("PENDING", "SUCCESS", "FAILED"),
+        type: Sequelize.ENUM("pending", "success", "failed"),
         allowNull: false
       },
       paymentMethod: {
         type: Sequelize.STRING,
         allowNull: false,
-        defaultValue: "PAYSTACK"
+        defaultValue: "paystack"
       },
       paidAt: {
         type: Sequelize.DATE,

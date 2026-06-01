@@ -282,7 +282,7 @@ const initializePayment = async (req, res, next) => {
       email,
       amount: tokenPrice,
       paymentReference: reference,
-      status: "PENDING"
+      status: "pending"
     });
 
     return res.status(200).json({ authorizationUrl, reference });
