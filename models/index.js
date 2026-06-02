@@ -76,13 +76,13 @@ Result.belongsTo(Exam, { foreignKey: "examId" });
 Class.hasMany(Result, { foreignKey: "classId" });
 Result.belongsTo(Class, { foreignKey: "classId" });
 
-Result.hasMany(ResultItem, { foreignKey: "resultId" });
+Result.hasMany(ResultItem, { foreignKey: "resultId", onDelete: "CASCADE" });
 ResultItem.belongsTo(Result, { foreignKey: "resultId" });
 
 Course.hasMany(ResultItem, { foreignKey: "courseId" });
 ResultItem.belongsTo(Course, { foreignKey: "courseId" });
 
-Result.hasMany(ResultEditLog, { foreignKey: "resultId" });
+Result.hasMany(ResultEditLog, { foreignKey: "resultId", onDelete: "CASCADE" });
 ResultEditLog.belongsTo(Result, { foreignKey: "resultId" });
 
 Admin.hasMany(ResultEditLog, { foreignKey: "adminId" });

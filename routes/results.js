@@ -10,7 +10,9 @@ const {
   listResultEditLogs,
   downloadResultPdf,
   listResults,
-  updateResult
+  updateResult,
+  deleteResult,
+  deleteResults
 } = require("../controllers/adminResultsController");
 
 const router = Router();
@@ -18,8 +20,10 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 router.get("/", listResults);
 router.put("/:id", updateResult); // Update Result Metadata
+router.delete("/:id", deleteResult); // Delete single result
 router.post("/manual", createManualResult);
 router.post("/bulk-upload", upload.single("file"), createBulkResults);
+router.delete("/", deleteResults); // Delete multiple results
 router.get("/bulk-upload/template.csv", downloadBulkResultsCsvTemplate);
 router.get("/bulk-upload/template.xlsx", downloadBulkResultsExcelTemplate);
 router.put("/items/:id", updateResultItem);

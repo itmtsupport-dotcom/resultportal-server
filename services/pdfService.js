@@ -314,7 +314,7 @@ const buildHtml = ({
             ${logoHtml}
             <div class="title">
               <h1>${escapeHtml(safeSchoolName)}</h1>
-              <p>Certificate of Achievement</p>
+              <p>Semester Result</p>
             </div>
           </div>
           
