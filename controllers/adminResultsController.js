@@ -8,6 +8,7 @@ const {
   Result,
   ResultItem,
   ResultEditLog,
+  TokenUsageLog,
   Admin,
   Student,
   Course,
@@ -912,11 +913,13 @@ const deleteResult = async (req, res, next) => {
 
 const deleteResults = async (req, res, next) => {
   try {
-    const { ids } = req.body;
+    const ids = Array.isArray(req.body.resultIds)
+      ? req.body.resultIds
+      : req.body.ids;
 
     // Validate input
     if (!Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: "ids must be a non-empty array" });
+      return res.status(400).json({ error: "resultIds or ids must be a non-empty array" });
     }
 
     // Verify all results exist
@@ -937,19 +940,22 @@ const deleteResults = async (req, res, next) => {
 
     // Delete within a transaction to ensure data consistency
     await sequelize.transaction(async (transaction) => {
-      // Delete all ResultEditLogs associated with these results
+      // Delete dependent records for these results
       await ResultEditLog.destroy({
         where: { resultId: ids },
         transaction
       });
 
-      // Delete all ResultItems associated with these results
       await ResultItem.destroy({
         where: { resultId: ids },
         transaction
       });
 
-      // Delete the results themselves
+      await TokenUsageLog.destroy({
+        where: { resultId: ids },
+        transaction
+      });
+
       await Result.destroy({
         where: { id: ids },
         transaction
@@ -967,6 +973,7 @@ const deleteResults = async (req, res, next) => {
     });
 
     return res.status(200).json({
+      success: true,
       message: `${results.length} result(s) deleted successfully`,
       deletedCount: results.length
     });
