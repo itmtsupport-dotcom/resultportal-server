@@ -152,17 +152,14 @@ const createManualResult = async (req, res, next) => {
     // Optional: Check if student belongs to department or class if strict validation is needed
     // For now, we assume admin knows what they are doing or student might take courses from other depts
 
-    const existing = await Result.findOne({
+    const existingResult = await Result.findOne({
       where: {
         studentId: student.id,
         yearId: normalizedYearId,
-        examId: normalizedExamId
+        examId: normalizedExamId,
+        classId: normalizedClassId
       }
     });
-
-    if (existing) {
-      return res.status(409).json({ error: "Result already exists for this student, year and exam" });
-    }
 
     const uniqueCourseIds = [...new Set(courseIds)];
     const dbCourses = await Course.findAll({
@@ -179,7 +176,7 @@ const createManualResult = async (req, res, next) => {
     }
 
     const result = await sequelize.transaction(async (transaction) => {
-      const createdResult = await Result.create(
+      const resultRecord = existingResult || await Result.create(
         {
           studentId: student.id,
           departmentId: normalizedDepartmentId,
@@ -191,16 +188,40 @@ const createManualResult = async (req, res, next) => {
         { transaction }
       );
 
-      const items = courses.map((item) => ({
-        resultId: createdResult.id,
-        courseId: item.courseId,
-        score: Number(item.score),
-        grade: calculateGrade(Number(item.score))
-      }));
+      const existingItems = await ResultItem.findAll({
+        where: {
+          resultId: resultRecord.id,
+          courseId: { [Op.in]: uniqueCourseIds }
+        },
+        transaction
+      });
+      const existingItemsMap = new Map(existingItems.map((item) => [item.courseId, item]));
 
-      await ResultItem.bulkCreate(items, { transaction });
+      const itemPromises = courses.map(async (item) => {
+        const courseId = normalizeValue(item.courseId);
+        const score = Number(item.score);
+        const grade = calculateGrade(score);
 
-      return createdResult;
+        const existingItem = existingItemsMap.get(courseId);
+        if (existingItem) {
+          existingItem.score = score;
+          existingItem.grade = grade;
+          return existingItem.save({ transaction });
+        }
+
+        return ResultItem.create(
+          {
+            resultId: resultRecord.id,
+            courseId,
+            score,
+            grade
+          },
+          { transaction }
+        );
+      });
+
+      await Promise.all(itemPromises);
+      return resultRecord;
     });
 
     // Send Notification
@@ -409,7 +430,8 @@ const createBulkResults = async (req, res, next) => {
           where: {
             studentId: student.id,
             yearId: year.id,
-            examId: exam.id
+            examId: exam.id,
+            classId: classObj.id
           }
         });
 
@@ -799,22 +821,24 @@ const updateResult = async (req, res, next) => {
       return res.status(404).json({ error: "Result not found" });
     }
 
-    // Check for duplicate result (student + year + exam) if those fields are changing
-    if (yearId || examId) {
+    // Check for duplicate result (student + year + exam + class) if those fields are changing
+    if (yearId || examId || classId) {
       const newYearId = yearId || result.yearId;
       const newExamId = examId || result.examId;
-      
+      const newClassId = classId || result.classId;
+
       const existing = await Result.findOne({
         where: {
           studentId: result.studentId,
           yearId: newYearId,
           examId: newExamId,
+          classId: newClassId,
           id: { [Op.ne]: result.id } // Exclude current result
         }
       });
 
       if (existing) {
-        return res.status(409).json({ error: "Another result already exists for this student, year and exam" });
+        return res.status(409).json({ error: "Another result already exists for this student, year, exam and class" });
       }
     }
 

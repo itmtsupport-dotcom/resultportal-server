@@ -52,14 +52,10 @@ module.exports = {
       console.log("Index removal skipped/failed", e.message);
     }
 
-    // New unique index on [studentId, yearId, examId, classId] ? 
-    // A student should have one result record per exam per year? 
-    // Or maybe just [studentId, yearId, examId] if class is implied?
-    // Usually a student is in one class per year. 
-    // Let's add index on [studentId, yearId, examId] to prevent duplicate results for same exam.
-    await queryInterface.addIndex("results", ["studentId", "yearId", "examId"], {
+    // A student should have one result record per exam, year and class.
+    await queryInterface.addIndex("results", ["studentId", "yearId", "examId", "classId"], {
       unique: true,
-      name: "results_student_year_exam_unique"
+      name: "results_student_year_exam_class_unique"
     });
   },
 
